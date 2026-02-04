@@ -1,19 +1,75 @@
-# Kotlin Backend (Spring Boot)
+# Kotlin Backend Service
 
-Minimal file storage service built with Kotlin and Spring Boot. Endpoints to upload, read, and list files, plus health and metrics. OpenAPI docs included via springdoc.
+A lightweight Kotlin/Spring Boot backend service that simulates AWS infrastructure (EC2, S3, CloudWatch) running entirely locally. This service demonstrates production-ready patterns without requiring any external AWS services or credentials.
 
-## Requirements
+## Features
 
-- Java 21
-- Gradle wrapper (included)
+- **File Storage API** - Local file storage simulating Amazon S3
+- **In-Memory Metrics** - CloudWatch-style metrics tracking
+- **Docker Support** - Containerized deployment ready
+- **Health Checks** - Production-ready health endpoints
 
 ## Quick Start
 
-- Run locally: `./gradlew bootRun`
-- Build JAR: `./gradlew build`
-- Run with Docker:
-  - `docker build -t kotlin-backend .`
-  - `docker run --rm -p 8080:8080 -v $(pwd)/storage:/storage kotlin-backend`
+### Prerequisites
+
+- Java 21
+- Docker (for containerized deployment)
+
+### Run with Docker
+
+```bash
+docker build -t kotlin-backend .
+docker run -p 8080:8080 kotlin-backend
+```
+
+### Run Locally (Development)
+
+```bash
+./gradlew bootRun
+```
+
+## API Endpoints
+
+### Upload File
+```bash
+POST /files
+Content-Type: application/json
+
+{
+  "filename": "test.txt",
+  "content": "Hello Nike"
+}
+```
+
+### Get File
+```bash
+GET /files/{filename}
+```
+
+### List Files
+```bash
+GET /files
+```
+
+### Get Metrics
+```bash
+GET /metrics
+```
+
+Response:
+```json
+{
+  "uploads": 3,
+  "reads": 5,
+  "errors": 1
+}
+```
+
+### Health Check
+```bash
+GET /health
+```
 
 ### Configuration
 
