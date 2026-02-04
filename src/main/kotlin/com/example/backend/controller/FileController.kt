@@ -2,77 +2,85 @@ package com.example.backend.controller
 
 import com.example.backend.model.FileRequest
 import com.example.backend.model.FileResponse
-import com.example.backend.service.MetricsService
-import com.example.backend.service.StorageService
-import org.slf4j.LoggerFactory
+import com.example.backend.service.FileService
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
+import io.swagger.v3.oas.annotations.media.Content
+import io.swagger.v3.oas.annotations.media.Schema
+import io.swagger.v3.oas.annotations.responses.ApiResponse
+import io.swagger.v3.oas.annotations.responses.ApiResponses
+import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 
 @RestController
 @RequestMapping("/files")
+@Tag(name = "Files", description = "Manage file upload, download and listing")
 class FileController(
-    private val storageService: StorageService,
-    private val metricsService: MetricsService
+    private val fileService: FileService
 ) {
-    
-    private val logger = LoggerFactory.getLogger(FileController::class.java)
-    
-    /**
-     * POST /files
-     * Upload a file to local storage (simulates S3 upload)
-     */
+
     @PostMapping
-    fun uploadFile(@RequestBody request: FileRequest): ResponseEntity<FileResponse> {
-        return try {
-            logger.info("Uploading file: ${request.filename}")
-            storageService.saveFile(request.filename, request.content)
-            metricsService.incrementUploads()
-            
-            ResponseEntity.status(HttpStatus.CREATED).body(
-                FileResponse(
-                    filename = request.filename,
-                    message = "File uploaded successfully"
-                )
-            )
-        } catch (e: Exception) {
-            logger.error("Error uploading file: ${request.filename}", e)
-            metricsService.incrementErrors()
-            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
-                FileResponse(
-                    filename = request.filename,
-                    message = "Error uploading file: ${e.message}"
-                )
-            )
-        }
+    @Operation(
+        summary = "Upload a file",
+        description = "Uploads a file to local storage (simulates S3 upload)."
+    )
+    @ApiResponses(
+        value = [
+            ApiResponse(responseCode = "201", description = "File uploaded"),
+            ApiResponse(responseCode = "500", description = "Storage error",
+                content = [Content(schema = Schema(implementation = com.example.backend.model.ApiError::class))])
+        ]
+    )
+    fun uploadFile(
+        @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            description = "File payload to upload",
+            required = true,
+            content = [Content(schema = Schema(implementation = FileRequest::class))]
+        )
+        @RequestBody request: FileRequest
+    ): ResponseEntity<FileResponse> {
+        val response = fileService.upload(request)
+        return ResponseEntity.status(HttpStatus.CREATED).body(response)
     }
-    
-    /**
-     * GET /files/{filename}
-     * Retrieve file content from local storage (simulates S3 download)
-     */
+
     @GetMapping("/{filename}")
-    fun getFile(@PathVariable filename: String): ResponseEntity<String> {
-        logger.info("Reading file: $filename")
-        
-        val content = storageService.readFile(filename)
-        
-        return if (content != null) {
-            metricsService.incrementReads()
-            ResponseEntity.ok(content)
-        } else {
-            metricsService.incrementErrors()
-            ResponseEntity.status(HttpStatus.NOT_FOUND).body("File not found: $filename")
-        }
+    @Operation(
+        summary = "Get file contents",
+        description = "Retrieves file content from local storage (simulates S3 download)."
+    )
+    @ApiResponses(
+        value = [
+            ApiResponse(responseCode = "200", description = "File found"),
+            ApiResponse(responseCode = "404", description = "File not found",
+                content = [Content(schema = Schema(implementation = com.example.backend.model.ApiError::class))]),
+            ApiResponse(responseCode = "500", description = "Storage error",
+                content = [Content(schema = Schema(implementation = com.example.backend.model.ApiError::class))])
+        ]
+    )
+    fun getFile(
+        @Parameter(description = "Name of the file", required = true)
+        @PathVariable filename: String
+    ): ResponseEntity<String> {
+        val content = fileService.read(filename)
+        return ResponseEntity.ok(content)
     }
-    
-    /**
-     * GET /files
-     * List all files in storage (bonus endpoint)
-     */
+
     @GetMapping
+    @Operation(
+        summary = "List files",
+        description = "Lists all files in storage."
+    )
+    @ApiResponses(
+        value = [
+            ApiResponse(responseCode = "200", description = "Files listed"),
+            ApiResponse(responseCode = "500", description = "Storage error",
+                content = [Content(schema = Schema(implementation = com.example.backend.model.ApiError::class))])
+        ]
+    )
     fun listFiles(): ResponseEntity<List<String>> {
-        val files = storageService.listFiles()
+        val files = fileService.list()
         return ResponseEntity.ok(files)
     }
 }
