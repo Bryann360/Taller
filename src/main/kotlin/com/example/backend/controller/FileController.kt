@@ -3,6 +3,9 @@ package com.example.backend.controller
 import com.example.backend.model.FileRequest
 import com.example.backend.model.FileResponse
 import com.example.backend.service.FileService
+import jakarta.validation.Valid
+import jakarta.validation.constraints.Size
+import org.springframework.validation.annotation.Validated
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.media.Content
@@ -17,6 +20,7 @@ import org.springframework.web.bind.annotation.*
 @RestController
 @RequestMapping("/files")
 @Tag(name = "Files", description = "Manage file upload, download and listing")
+@Validated
 class FileController(
     private val fileService: FileService
 ) {
@@ -29,6 +33,8 @@ class FileController(
     @ApiResponses(
         value = [
             ApiResponse(responseCode = "201", description = "File uploaded"),
+            ApiResponse(responseCode = "409", description = "File already exists",
+                content = [Content(schema = Schema(implementation = com.example.backend.model.ApiError::class))]),
             ApiResponse(responseCode = "500", description = "Storage error",
                 content = [Content(schema = Schema(implementation = com.example.backend.model.ApiError::class))])
         ]
@@ -39,7 +45,7 @@ class FileController(
             required = true,
             content = [Content(schema = Schema(implementation = FileRequest::class))]
         )
-        @RequestBody request: FileRequest
+        @RequestBody @Valid request: FileRequest
     ): ResponseEntity<FileResponse> {
         val response = fileService.upload(request)
         return ResponseEntity.status(HttpStatus.CREATED).body(response)
@@ -61,7 +67,7 @@ class FileController(
     )
     fun getFile(
         @Parameter(description = "Name of the file", required = true)
-        @PathVariable filename: String
+        @PathVariable @Size(min = 1, max = 255) filename: String
     ): ResponseEntity<String> {
         val content = fileService.read(filename)
         return ResponseEntity.ok(content)

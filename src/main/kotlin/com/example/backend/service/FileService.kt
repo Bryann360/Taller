@@ -1,5 +1,6 @@
 package com.example.backend.service
 
+import com.example.backend.exception.FileAlreadyExistsException
 import com.example.backend.exception.NotFoundException
 import com.example.backend.exception.StorageException
 import com.example.backend.model.FileRequest
@@ -18,6 +19,10 @@ class FileService(
     fun upload(request: FileRequest): FileResponse {
         try {
             logger.info("Uploading file: {}", request.filename)
+            if (storageService.fileExists(request.filename)) {
+                metricsService.incrementErrors()
+                throw FileAlreadyExistsException("File already exists: ${'$'}{request.filename}")
+            }
             storageService.saveFile(request.filename, request.content)
             metricsService.incrementUploads()
             return FileResponse(
@@ -60,4 +65,3 @@ class FileService(
         }
     }
 }
-
